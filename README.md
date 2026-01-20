@@ -25,7 +25,7 @@ CondaNest gives you a single, focused window to see which envs exist, what they 
 
 ```bash
 git clone https://github.com/aradar46/condanest.git
-cd CondaNest
+cd condanest
 python3 -m venv --system-site-packages .venv
 source .venv/bin/activate
 pip install --upgrade pip setuptools wheel
