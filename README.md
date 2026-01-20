@@ -7,11 +7,11 @@
  A fast, minimal GTK4 desktop app for **managing, and cleaning Conda/Mamba environments** on Linux.  
 CondaNest gives you a single, focused window to see which envs exist, what they contain, and how much disk space they use – without touching your shell config.
 
-### Why?
+<p align="center">
+  <img src="app.gif" alt="CondaNest in action">
+</p>
 
-- **Conda envs sprawl**: after a while it’s hard to remember what’s where, which env is active, or what’s safe to delete.
-- **CLI is powerful but noisy**: `conda env list`, `conda clean`, `conda config` all have many flags and different outputs.
-- **Linux‑native UX**: most Conda tooling is web‑ or CLI‑only; CondaNest is a small Libadwaita app that feels at home on modern GNOME desktops.
+
 
 ### Features (current prototype)
 
@@ -43,6 +43,27 @@ chmod +x CondaNest-x86_64.AppImage
 ```
 
 This bundles CondaNest and its Python dependencies in an internal virtualenv. Your system still needs GTK4/Libadwaita + PyGObject installed as listed in the requirements above.
+
+### Conda/Mamba Detection & Setup
+
+CondaNest **automatically detects** your existing Conda or Mamba installation by checking:
+
+- Environment variables (`$CONDA_EXE`, `$MAMBA_EXE`)
+- Common installation locations (`~/miniforge3`, `~/miniconda3`, `~/anaconda3`)
+- System PATH
+
+If no Conda/Mamba installation is found, CondaNest can **install Miniforge for you** (recommended) or help you locate an existing installation. Miniforge is a community-driven distribution that uses the `conda-forge` channel by default and doesn't require accepting Anaconda's Terms of Service.
+
+#### Anaconda Terms of Service
+
+If you're using **Anaconda/miniconda** (not Miniforge/Mambaforge) and the default Anaconda channels are enabled, you may need to accept their Terms of Service before certain operations work. If CondaNest shows a ToS error, copy and run these commands **once** in a terminal (replace `conda` with your actual conda executable path if needed):
+
+```bash
+conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main
+conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
+```
+
+After running these commands, retry the operation in CondaNest.
 
 ### Requirements
 
