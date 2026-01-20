@@ -1,0 +1,28 @@
+# Virtual environments
+.venv/
+venv/
+
+# AppDir and packaged AppImage artifacts
+AppDir/
+CondaNest-x86_64.AppImage
+
+# Python cache and build artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+
+build/
+dist/
+*.egg-info/
+
+# IDE / editor metadata
+.idea/
+.vscode/
+*.swp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+appImage.md
+plan.md
