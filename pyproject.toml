@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "condanest"
+version = "0.1.0"
+description = "CondaNest - Linux-native Conda/Mamba manager with GTK4 + Libadwaita UI."
+authors = [
+  { name = "Adr", email = "you@example.com" },
+]
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+keywords = ["conda", "mamba", "gtk4", "libadwaita"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: POSIX :: Linux",
+  "Environment :: X11 Applications :: GTK",
+]
+dependencies = [
+  # Core runtime
+  "packaging>=23.0",
+  # NOTE: PyGObject is usually provided by the distro (python3-gi, gir1.2-gtk-4.0, gir1.2-adw-1).
+  # We declare it as an optional dependency here; installation docs should explain system packages.
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest",
+]
+
+[project.scripts]
+condanest = "condanest.app:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+

@@ -1,0 +1,4 @@
+packaging>=23.0
+
+[dev]
+pytest
