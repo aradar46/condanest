@@ -1,9 +1,7 @@
-"""CondaNest - Cross-platform Conda/Mamba manager.
+"""CondaNest - Web-based Conda/Mamba environment manager.
 
-This package provides multiple frontends for managing Conda/Mamba environments:
-- Qt frontend (default, cross-platform: Linux, Windows, macOS)
-- GTK4 frontend (Linux-specific, requires GTK4 and Libadwaita)
-- Web frontend (cross-platform, runs a local web server)
+This package provides a web frontend for managing Conda/Mamba environments.
+Runs a local web server that opens in your browser.
 """
 
 __all__ = ["__version__"]

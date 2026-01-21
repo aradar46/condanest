@@ -2,12 +2,24 @@
   <img src="condanest.png" alt="CondaNest logo" width="200">
 </p>
 
-## CondaNest: GUI Manager for Conda
+<p align="center">
+  <a href="https://pypi.org/project/condanest/">
+    <img src="https://img.shields.io/pypi/v/condanest.svg" alt="PyPI version">
+  </a>
+  <a href="https://pypi.org/project/condanest/">
+    <img src="https://img.shields.io/pypi/pyversions/condanest.svg" alt="Python versions">
+  </a>
+  <img src="https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20macOS-blue" alt="Platform support">
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
+  </a>
+</p>
 
-A fast, minimal desktop app for **managing and cleaning Conda/Mamba environments** on Linux, Windows, and macOS.
+## CondaNest: Web-based Conda Manager
 
-**Default frontend:** Qt (PySide6) - works on all platforms  
-**Alternative frontends:** GTK4 (Linux only) or Web (all platforms)   
+A fast, minimal web app for **managing and cleaning Conda/Mamba environments** on Linux, Windows, and macOS.
+
+Runs a local web server that opens in your browser - no native GUI dependencies required.
 
 <p align="center">
   <img src="app.gif" alt="CondaNest in action">
@@ -23,29 +35,38 @@ A fast, minimal desktop app for **managing and cleaning Conda/Mamba environments
 * Manage global channels and strict priority
 * Install packages in a environment
 
-### Quick start (development)
+### Installation
+
+Install CondaNest from PyPI:
+
+```bash
+pip install condanest
+```
+
+Or install from source:
 
 ```bash
 git clone https://github.com/aradar46/condanest.git
 cd condanest
-python3 -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-pip install -e .
-condanest  # Runs Qt frontend (default, cross-platform)
+pip install .
 ```
 
-**Alternative frontends:**
-```bash
-condanest-gtk  # GTK4 frontend (Linux only)
-condanest-web  # Web frontend (opens in browser)
-```
+### Usage
 
-### AppImage
+After installation, run:
 
 ```bash
-chmod +x CondaNest-x86_64.AppImage
-./CondaNest-x86_64.AppImage
+condanest
 ```
+
+The app will automatically start a web server and open in your browser at http://127.0.0.1:8765
+
+**Platform support:**
+- ✅ **Linux**: Fully supported
+- ✅ **Windows**: Fully supported (uses `Scripts/conda.exe`)
+- ✅ **macOS**: Fully supported
+
+The browser should open automatically on all platforms. If it doesn't, manually navigate to http://127.0.0.1:8765
 
 ### Anaconda Terms of Service
 
@@ -60,17 +81,11 @@ After running these commands, retry the operation in CondaNest.
 
 ### Requirements
 
-**Default Qt frontend (cross-platform):**
 * Python 3.10+
-* PySide6 (installed automatically via pip)
-
-**GTK4 frontend (Linux only):**
-* Linux with GTK4 and Libadwaita
-* `python3-gi`, `gir1.2-gtk-4.0`, `gir1.2-adw-1`
-
-**Web frontend:**
-* Python 3.10+
+* Conda or Mamba installed on your system (or use the built-in Miniforge installer)
 * FastAPI and Uvicorn (installed automatically via pip)
+
+**Note:** CondaNest will automatically detect Conda/Mamba installations. If none are found, you can use the built-in installer to install Miniforge directly from the app.
 
 ### License
 

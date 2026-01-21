@@ -64,10 +64,16 @@ def _candidate_executables(config: AppConfig) -> Iterable[str]:
     # 3) Common install roots in the home directory.
     home = Path.home()
     for root_name in ("miniforge3", "miniconda3", "anaconda3"):
-        root = home / root_name / "bin"
+        # Windows uses Scripts/, Unix uses bin/
+        if platform.system() == "Windows":
+            root = home / root_name / "Scripts"
+            exe_ext = ".exe"
+        else:
+            root = home / root_name / "bin"
+            exe_ext = ""
         for name in ("conda", "mamba"):
-            candidate = root / name
-            if candidate.is_file() and os.access(candidate, os.X_OK):
+            candidate = root / f"{name}{exe_ext}"
+            if candidate.is_file() and (platform.system() == "Windows" or os.access(candidate, os.X_OK)):
                 yield str(candidate)
 
     # 4) Fall back to PATH lookup (prefer conda; mamba second).
@@ -334,9 +340,7 @@ def list_installed_packages(backend: BackendInfo, env: Environment) -> List[Pack
         pkg = Package(
             name=str(name),
             version=str(version),
-            build_string=entry.get("build_string"),
             channel=entry.get("channel"),
-            source="conda",
         )
         packages.append(pkg)
 
@@ -349,20 +353,6 @@ def install_packages(backend: BackendInfo, env: Environment, specs: List[str]) -
         return
     args: List[str] = [
         "install",
-        "--yes",
-        "--name",
-        env.name,
-        *specs,
-    ]
-    _run_plain(backend, args)
-
-
-def update_packages(backend: BackendInfo, env: Environment, specs: List[str]) -> None:
-    """Update one or more packages in an environment."""
-    if not specs:
-        return
-    args: List[str] = [
-        "update",
         "--yes",
         "--name",
         env.name,
@@ -397,7 +387,7 @@ def update_all_packages(backend: BackendInfo, env: Environment) -> None:
     _run_plain(backend, args)
 
 
-def clone_environment(backend: BackendInfo, source: Environment, new_name: str) -> Environment:
+def clone_environment(backend: BackendInfo, source: Environment, new_name: str) -> None:
     """Clone an environment to a new name.
 
     This uses `conda create --yes --prefix <new_path> --clone <old_path>`.
@@ -414,7 +404,6 @@ def clone_environment(backend: BackendInfo, source: Environment, new_name: str) 
             str(source.path),
         ],
     )
-    return Environment(name=new_name, path=new_path, is_active=False)
 
 
 def remove_environment(backend: BackendInfo, env: Environment) -> None:
@@ -431,7 +420,7 @@ def remove_environment(backend: BackendInfo, env: Environment) -> None:
     )
 
 
-def create_environment(backend: BackendInfo, name: str, python_version: Optional[str] = None) -> Environment:
+def create_environment(backend: BackendInfo, name: str, python_version: Optional[str] = None) -> None:
     """Create a new environment with an optional Python version."""
     args: List[str] = [
         "create",
@@ -443,11 +432,6 @@ def create_environment(backend: BackendInfo, name: str, python_version: Optional
         args.append(f"python={python_version}")
 
     _run_plain(backend, args)
-
-    # Derive the expected env path under <root>/envs/<name>
-    root_prefix = backend.base_prefix or Path.home() / "miniforge3"
-    env_path = root_prefix / "envs" / name
-    return Environment(name=name, path=env_path, is_active=False)
 
 
 def export_environment_yaml(
@@ -630,13 +614,10 @@ def set_channel_priority_mode(backend: BackendInfo, mode: str) -> None:
 
 def install_miniforge(
     progress: Optional[Callable[[str], None]] = None,
-) -> Path:
+) -> None:
     """Download and install Miniforge into the user's home directory.
 
-    The installer script requires bash (POSIX sh is not supported).
-
-    Returns:
-        Path to the installation prefix (e.g. ~/miniforge3).
+    Supports Linux, macOS, and Windows.
 
     Raises:
         EnvOperationError on failure (including unsupported architecture).
@@ -650,8 +631,11 @@ def install_miniforge(
                 # UI callbacks should not break the installer.
                 logger.debug("Progress callback failed", exc_info=True)
 
-    # Detect system architecture.
+    # Detect system platform and architecture.
+    system = platform.system()
     machine = platform.machine()
+    
+    # Map architectures
     arch_map = {
         "x86_64": "x86_64",
         "amd64": "x86_64",  # Some systems report amd64 instead of x86_64
@@ -668,9 +652,24 @@ def install_miniforge(
             f"Please install Conda/Mamba manually or use a supported architecture."
         )
 
+    # Determine installer filename based on platform
+    if system == "Windows":
+        installer_filename = f"Miniforge3-Windows-{arch_key}.exe"
+        installer_type = "exe"
+    elif system == "Darwin":  # macOS
+        installer_filename = f"Miniforge3-MacOSX-{arch_key}.sh"
+        installer_type = "sh"
+    elif system == "Linux":
+        installer_filename = f"Miniforge3-Linux-{arch_key}.sh"
+        installer_type = "sh"
+    else:
+        raise EnvOperationError(
+            f"Unsupported platform: {system}. "
+            f"Miniforge installer is only available for Windows, macOS, and Linux."
+        )
+
     home = Path.home()
     install_dir = home / "miniforge3"
-    installer_filename = f"Miniforge3-Linux-{arch_key}.sh"
     url = (
         "https://github.com/conda-forge/miniforge/releases/latest/download/"
         f"{installer_filename}"
@@ -690,21 +689,34 @@ def install_miniforge(
     except Exception as exc:  # noqa: BLE001
         raise EnvOperationError(f"Failed to download Miniforge installer: {exc}") from exc
 
-    # 2) Run installer in batch mode (requires bash).
+    # 2) Run installer
     try:
         report("Running Miniforge installer…")
-        subprocess.run(
-            ["bash", str(installer_path), "-b", "-p", str(install_dir)],
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
-    except FileNotFoundError:
-        raise EnvOperationError(
-            "bash is required to run the Miniforge installer, but bash was not found. "
-            "Please install bash and try again."
-        )
+        if installer_type == "exe":
+            # Windows: run .exe installer silently
+            subprocess.run(
+                [str(installer_path), "/InstallationType=JustMe", "/RegisterPython=0", 
+                 "/S", f"/D={install_dir}"],
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+        else:
+            # Unix (Linux/macOS): run .sh installer with bash
+            try:
+                subprocess.run(
+                    ["bash", str(installer_path), "-b", "-p", str(install_dir)],
+                    check=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                )
+            except FileNotFoundError:
+                raise EnvOperationError(
+                    "bash is required to run the Miniforge installer, but bash was not found. "
+                    "Please install bash and try again."
+                )
     except subprocess.CalledProcessError as exc:
         logger.error(
             "Miniforge installer failed: %s\nSTDOUT:\n%s\nSTDERR:\n%s",
@@ -721,8 +733,14 @@ def install_miniforge(
             logger.debug("Failed to remove installer script", exc_info=True)
 
     # 3) Update config to point at the new installation.
-    conda_exe = install_dir / "bin" / "conda"
-    mamba_exe = install_dir / "bin" / "mamba"
+    # Windows uses Scripts/, Unix uses bin/
+    if system == "Windows":
+        conda_exe = install_dir / "Scripts" / "conda.exe"
+        mamba_exe = install_dir / "Scripts" / "mamba.exe"
+    else:
+        conda_exe = install_dir / "bin" / "conda"
+        mamba_exe = install_dir / "bin" / "mamba"
+    
     # Prefer `conda` for maximum CLI compatibility; fall back to mamba.
     exe_path = conda_exe if conda_exe.is_file() else mamba_exe
     if not exe_path.is_file():
@@ -733,13 +751,9 @@ def install_miniforge(
     try:
         cfg = load_config()
         cfg.conda_executable = str(exe_path)
-        # Point env_root to the standard envs/ directory.
-        envs_dir = install_dir / "envs"
-        cfg.env_root = str(envs_dir)
         save_config(cfg)
     except Exception:  # noqa: BLE001
         logger.debug("Failed to persist Miniforge configuration", exc_info=True)
 
     report(f"Miniforge installed to {install_dir}")
-    return install_dir
 

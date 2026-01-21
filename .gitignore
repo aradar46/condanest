@@ -1,28 +1,44 @@
 # Virtual environments
 .venv/
 venv/
-
-# AppDir and packaged AppImage artifacts
-AppDir/
-CondaNest-x86_64.AppImage
+.build-venv/
+.test-venv/
+.test-pypi-venv/
+*venv/
 
 # Python cache and build artifacts
 __pycache__/
 *.py[cod]
 *.pyo
+*.pyc
+*.pyd
+.Python
 
+# Build and distribution
 build/
 dist/
 *.egg-info/
+*.egg
+*.whl
+*.tar.gz
 
 # IDE / editor metadata
 .idea/
 .vscode/
 *.swp
+*.swo
+*~
 
 # OS files
 .DS_Store
 Thumbs.db
+.Directory
 
-appImage.md
-plan.md
+# Sensitive files (API tokens, credentials)
+.pypirc
+*.key
+*.pem
+
+# Temporary files
+*.log
+*.tmp

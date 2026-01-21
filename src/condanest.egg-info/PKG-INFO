@@ -1,32 +1,32 @@
 Metadata-Version: 2.4
 Name: condanest
 Version: 0.1.0
-Summary: CondaNest - Conda/Mamba manager with GTK4 and Qt frontends.
+Summary: CondaNest - Web-based Conda/Mamba environment manager.
 Author-email: Adr <you@example.com>
-License: MIT
-Keywords: conda,mamba,gtk4,libadwaita
+License-Expression: MIT
+Keywords: conda,mamba,web,fastapi,cross-platform
 Classifier: Programming Language :: Python :: 3
 Classifier: Programming Language :: Python :: 3 :: Only
-Classifier: License :: OSI Approved :: MIT License
 Classifier: Operating System :: OS Independent
 Requires-Python: >=3.10
 Description-Content-Type: text/markdown
-Requires-Dist: packaging>=23.0
+License-File: LICENSE
 Requires-Dist: fastapi>=0.115.0
 Requires-Dist: uvicorn>=0.30.0
 Requires-Dist: python-multipart>=0.0.9
-Requires-Dist: PySide6>=6.7.0
 Provides-Extra: dev
 Requires-Dist: pytest; extra == "dev"
+Dynamic: license-file
 
 <p align="center">
   <img src="condanest.png" alt="CondaNest logo" width="200">
 </p>
 
-## CondaNest: GUI Manager for Conda
+## CondaNest: Web-based Conda Manager
 
+A fast, minimal web app for **managing and cleaning Conda/Mamba environments** on Linux, Windows, and macOS.
 
- A fast, minimal GTK4 desktop app for **managing, and cleaning Conda/Mamba environments** on Linux.   
+Runs a local web server that opens in your browser - no native GUI dependencies required.
 
 <p align="center">
   <img src="app.gif" alt="CondaNest in action">
@@ -42,23 +42,35 @@ Requires-Dist: pytest; extra == "dev"
 * Manage global channels and strict priority
 * Install packages in a environment
 
-### Quick start (development)
+### Installation
+
+Install CondaNest using pip:
+
+```bash
+pip install condanest
+```
+
+Or install from source:
 
 ```bash
 git clone https://github.com/aradar46/condanest.git
 cd condanest
-python3 -m venv --system-site-packages .venv
-source .venv/bin/activate
-pip install -e .
+pip install .
+```
+
+### Usage
+
+After installation, run:
+
+```bash
 condanest
 ```
 
-### AppImage
+The app will automatically start a web server and open in your browser at http://127.0.0.1:8765
 
-```bash
-chmod +x CondaNest-x86_64.AppImage
-./CondaNest-x86_64.AppImage
-```
+**Platform-specific notes:**
+- **Linux/macOS**: The browser should open automatically
+- **Windows**: The browser should open automatically. If it doesn't, manually navigate to http://127.0.0.1:8765
 
 ### Anaconda Terms of Service
 
@@ -73,9 +85,8 @@ After running these commands, retry the operation in CondaNest.
 
 ### Requirements
 
-* Linux with GTK4 and Libadwaita
 * Python 3.10+
-* `python3-gi`, `gir1.2-gtk-4.0`, `gir1.2-adw-1`
+* FastAPI and Uvicorn (installed automatically via pip)
 
 ### License
 

@@ -11,11 +11,13 @@ This starts a FastAPI app on http://127.0.0.1:8765 and opens it in your browser.
 It reuses the existing backend.py functions; no Qt/GTK or native plugins required.
 """
 
+import threading
+import time
 import webbrowser
 from pathlib import Path
 from typing import Optional, List
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -136,8 +138,9 @@ def _startup() -> None:
     global _backend
     try:
         _backend = detect_backend()
-    except BackendNotFoundError as exc:
-        raise RuntimeError(f"Conda/Mamba backend not found: {exc}") from exc
+    except BackendNotFoundError:
+        # Allow app to start without backend; UI will show setup options
+        _backend = None
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -584,28 +587,40 @@ def index() -> str:
         <span id="disk"></span>
       </div>
       <div id="content">
-        <div>
-          <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px;">
-            <h2 id="env-title" style="margin:0;">No environment selected</h2>
-            <div id="env-actions" style="display:none;">
-              <button onclick="cloneEnv()">Clone…</button>
-              <button onclick="renameEnv()">Rename…</button>
-              <button class="danger" onclick="deleteEnv()">Delete…</button>
-              <button onclick="exportYaml()">Export YAML…</button>
-            </div>
+        <div id="no-backend-message" style="display: none; text-align: center; padding: 40px 20px;">
+          <h2 style="margin: 0 0 16px 0; color: var(--text-main);">No Conda/Mamba Backend Found</h2>
+          <p style="color: var(--text-muted); margin-bottom: 24px; max-width: 500px; margin-left: auto; margin-right: auto;">
+            CondaNest needs a Conda or Mamba installation to work. You can install Miniforge (recommended) or point CondaNest to an existing installation.
+          </p>
+          <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+            <button class="primary" onclick="installMiniforge()" style="padding: 10px 20px; font-size: 1rem;">Install Miniforge</button>
+            <button onclick="locateConda()" style="padding: 10px 20px; font-size: 1rem;">Locate Conda…</button>
           </div>
-          <p id="env-path" style="margin-top:6px;"></p>
         </div>
-        <div id="pkg-management" style="display:none; margin-top:8px;">
-          <input id="pkg-search" type="text" placeholder="Search packages…" oninput="filterPackages()" />
-          <button onclick="installPackage()">Install…</button>
-          <button onclick="removePackage()">Remove…</button>
-          <button onclick="updateAll()">Update all…</button>
+        <div id="main-content" style="display: block;">
+          <div>
+            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px;">
+              <h2 id="env-title" style="margin:0;">No environment selected</h2>
+              <div id="env-actions" style="display:none;">
+                <button onclick="cloneEnv()">Clone…</button>
+                <button onclick="renameEnv()">Rename…</button>
+                <button class="danger" onclick="deleteEnv()">Delete…</button>
+                <button onclick="exportYaml()">Export YAML…</button>
+              </div>
+            </div>
+            <p id="env-path" style="margin-top:6px;"></p>
+          </div>
+          <div id="pkg-management" style="display:none; margin-top:8px;">
+            <input id="pkg-search" type="text" placeholder="Search packages…" oninput="filterPackages()" />
+            <button onclick="installPackage()">Install…</button>
+            <button onclick="removePackage()">Remove…</button>
+            <button onclick="updateAll()">Update all…</button>
+          </div>
+          <table id="pkgs-table" style="display:none;">
+            <thead><tr><th>Name</th><th>Version</th><th>Channel</th></tr></thead>
+            <tbody></tbody>
+          </table>
         </div>
-        <table id="pkgs-table" style="display:none;">
-          <thead><tr><th>Name</th><th>Version</th><th>Channel</th></tr></thead>
-          <tbody></tbody>
-        </table>
       </div>
     </div>
   </div>
@@ -634,6 +649,37 @@ def index() -> str:
     </div>
   </div>
 
+  <!-- Create Environment Modal -->
+  <div id="create-env-modal" class="modal-overlay" onclick="if(event.target === this) closeCreateEnvModal()">
+    <div class="modal-dialog" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Create Environment</h3>
+      </div>
+      <div class="modal-body">
+        <div style="display: flex; gap: 12px; margin-bottom: 16px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 12px;">
+          <button id="create-tab-name" class="primary" onclick="switchCreateTab('name')" style="flex: 1;">Name + Python</button>
+          <button id="create-tab-file" onclick="switchCreateTab('file')" style="flex: 1;">From File</button>
+        </div>
+        <div id="create-tab-content-name" style="display: block;">
+          <label for="create-env-name" style="display:block; margin-bottom:6px; font-weight:500;">Environment name:</label>
+          <input type="text" id="create-env-name" placeholder="myenv" style="width: 100%; margin-bottom: 12px;">
+          <label for="create-env-python" style="display:block; margin-bottom:6px; font-weight:500;">Python version (optional):</label>
+          <input type="text" id="create-env-python" placeholder="3.11" style="width: 100%; margin-bottom: 12px;">
+          <div class="help-text">Leave Python version empty to use the default version.</div>
+        </div>
+        <div id="create-tab-content-file" style="display: none;">
+          <label for="create-env-file" style="display:block; margin-bottom:6px; font-weight:500;">Environment file (environment.yml):</label>
+          <input type="file" id="create-env-file" accept=".yml,.yaml,text/yaml" style="width: 100%; margin-bottom: 12px;">
+          <div class="help-text">Select an environment.yml file to create the environment from.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button onclick="closeCreateEnvModal()">Cancel</button>
+        <button class="primary" onclick="applyCreateEnv()">Create</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     let currentEnv = null;
     let allPackages = [];
@@ -656,27 +702,48 @@ def index() -> str:
 
     async function loadEnvs() {
       setStatus('Loading environments…');
-      const envs = await api('/api/envs');
-      const container = document.getElementById('envs');
-      container.innerHTML = '';
-      envs.forEach(env => {
-        const div = document.createElement('div');
-        let cls = 'env';
-        if (env.is_active) cls += ' active';
-        if (env.name === currentEnv) cls += ' selected';
-        div.className = cls;
-        const nameSpan = document.createElement('span');
-        nameSpan.textContent = env.name;
-        const sizeSpan = document.createElement('span');
-        sizeSpan.className = 'size';
-        sizeSpan.textContent = env.size;
-        div.appendChild(nameSpan);
-        div.appendChild(sizeSpan);
-        div.onclick = () => selectEnv(env.name);
-        container.appendChild(div);
-      });
-      const disk = await api('/api/disk');
-      document.getElementById('disk').textContent = 'Total: ' + disk.total;
+      try {
+        const backendStatus = await api('/api/backend_status');
+        if (!backendStatus.available) {
+          // Show no-backend message
+          document.getElementById('no-backend-message').style.display = 'block';
+          document.getElementById('main-content').style.display = 'none';
+          document.getElementById('envs').innerHTML = '';
+          document.getElementById('disk').textContent = '';
+          setStatus('');
+          return;
+        }
+        
+        // Hide no-backend message, show main content
+        document.getElementById('no-backend-message').style.display = 'none';
+        document.getElementById('main-content').style.display = 'block';
+        
+        const envs = await api('/api/envs');
+        const container = document.getElementById('envs');
+        container.innerHTML = '';
+        envs.forEach(env => {
+          const div = document.createElement('div');
+          let cls = 'env';
+          if (env.is_active) cls += ' active';
+          if (env.name === currentEnv) cls += ' selected';
+          div.className = cls;
+          const nameSpan = document.createElement('span');
+          nameSpan.textContent = env.name;
+          const sizeSpan = document.createElement('span');
+          sizeSpan.className = 'size';
+          sizeSpan.textContent = env.size;
+          div.appendChild(nameSpan);
+          div.appendChild(sizeSpan);
+          div.onclick = () => selectEnv(env.name);
+          container.appendChild(div);
+        });
+        const disk = await api('/api/disk');
+        document.getElementById('disk').textContent = 'Total: ' + disk.total;
+      } catch (error) {
+        // If backend check fails, show no-backend message
+        document.getElementById('no-backend-message').style.display = 'block';
+        document.getElementById('main-content').style.display = 'none';
+      }
       setStatus('');
     }
 
@@ -779,19 +846,86 @@ def index() -> str:
       setStatus('');
     }
 
-    async function showCreateEnv() {
-      const name = prompt('Environment name:');
-      if (!name) return;
-      const py = prompt('Python version (optional, e.g. 3.11):') || null;
-      setStatus('Creating environment ' + name + '…');
-      await api('/api/envs', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({name, python_version: py}),
-      });
-      await loadEnvs();
-      await selectEnv(name);
-      setStatus('');
+    function showCreateEnv() {
+      document.getElementById('create-env-modal').classList.add('show');
+      switchCreateTab('name');
+      document.getElementById('create-env-name').value = '';
+      document.getElementById('create-env-python').value = '';
+      document.getElementById('create-env-file').value = '';
+    }
+
+    function closeCreateEnvModal() {
+      document.getElementById('create-env-modal').classList.remove('show');
+    }
+
+    function switchCreateTab(tab) {
+      if (tab === 'name') {
+        document.getElementById('create-tab-name').classList.add('primary');
+        document.getElementById('create-tab-file').classList.remove('primary');
+        document.getElementById('create-tab-content-name').style.display = 'block';
+        document.getElementById('create-tab-content-file').style.display = 'none';
+      } else {
+        document.getElementById('create-tab-name').classList.remove('primary');
+        document.getElementById('create-tab-file').classList.add('primary');
+        document.getElementById('create-tab-content-name').style.display = 'none';
+        document.getElementById('create-tab-content-file').style.display = 'block';
+      }
+    }
+
+    async function applyCreateEnv() {
+      const tabName = document.getElementById('create-tab-name').classList.contains('primary') ? 'name' : 'file';
+      
+      if (tabName === 'name') {
+        const name = document.getElementById('create-env-name').value.trim();
+        if (!name) {
+          alert('Please enter an environment name.');
+          return;
+        }
+        const py = document.getElementById('create-env-python').value.trim() || null;
+        setStatus('Creating environment ' + name + '…');
+        try {
+          await api('/api/envs', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name, python_version: py}),
+          });
+          await loadEnvs();
+          await selectEnv(name);
+          closeCreateEnvModal();
+          setStatus('');
+        } catch (error) {
+          alert('Failed to create environment: ' + error.message);
+          setStatus('');
+        }
+      } else {
+        const fileInput = document.getElementById('create-env-file');
+        if (!fileInput.files || !fileInput.files.length) {
+          alert('Please select an environment.yml file.');
+          return;
+        }
+        const file = fileInput.files[0];
+        const form = new FormData();
+        form.append('files', file);
+        setStatus('Creating environment from file…');
+        try {
+          const res = await fetch('/api/create_from_files', {
+            method: 'POST',
+            body: form,
+          });
+          if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text || res.statusText);
+          }
+          await loadEnvs();
+          const fileName = file.name.replace(/\.(yml|yaml)$/i, '');
+          await selectEnv(fileName);
+          closeCreateEnvModal();
+          setStatus('');
+        } catch (error) {
+          alert('Failed to create environment from file: ' + error.message);
+          setStatus('');
+        }
+      }
     }
 
     async function cloneEnv() {
@@ -929,34 +1063,47 @@ def index() -> str:
     }
 
     async function installMiniforge() {
-      if (!confirm('Install Miniforge into your home directory?')) return;
+      if (!confirm('Install Miniforge into your home directory? This will download and install Miniforge, which may take a few minutes.')) return;
       setStatus('Installing Miniforge…');
-      const res = await fetch('/api/install_miniforge', {method: 'POST'});
-      if (!res.ok) {
-        const text = await res.text();
-        alert('Miniforge installation failed: ' + text);
-      } else {
-        alert('Miniforge installed. Backend will be re-detected on next refresh.');
+      try {
+        const res = await fetch('/api/install_miniforge', {method: 'POST'});
+        if (!res.ok) {
+          const text = await res.text();
+          alert('Miniforge installation failed: ' + text);
+          setStatus('');
+        } else {
+          alert('Miniforge installed successfully! The page will refresh to detect the new installation.');
+          await refreshAll();
+          setStatus('');
+        }
+      } catch (error) {
+        alert('Miniforge installation failed: ' + error.message);
+        setStatus('');
       }
-      await refreshAll();
-      setStatus('');
     }
 
     async function locateConda() {
-      const path = prompt('Full path to Conda/Mamba executable (e.g. /home/you/miniforge3/bin/conda):');
+      const path = prompt('Full path to Conda/Mamba executable (e.g. /home/you/miniforge3/bin/conda or /usr/bin/conda):');
       if (!path) return;
       setStatus('Saving Conda path and re-detecting backend…');
-      const res = await fetch('/api/locate_conda', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({path}),
-      });
-      if (!res.ok) {
-        const text = await res.text();
-        alert('Failed to set Conda path: ' + text);
+      try {
+        const res = await fetch('/api/locate_conda', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({path}),
+        });
+        if (!res.ok) {
+          const text = await res.text();
+          alert('Failed to set Conda path: ' + text);
+          setStatus('');
+        } else {
+          await refreshAll();
+          setStatus('');
+        }
+      } catch (error) {
+        alert('Failed to set Conda path: ' + error.message);
+        setStatus('');
       }
-      await refreshAll();
-      setStatus('');
     }
 
     function toggleMoreMenu() {
@@ -996,10 +1143,17 @@ def index() -> str:
 """
 
 
+@app.get("/api/backend_status")
+def api_backend_status() -> dict:
+    """Check if backend is available."""
+    return {"available": _backend is not None}
+
+
 @app.get("/api/envs", response_model=List[EnvSummary])
 def api_list_envs() -> List[EnvSummary]:
-    backend = _must_backend()
-    envs = list_envs(backend)
+    if _backend is None:
+        return []
+    envs = list_envs(_backend)
     result: List[EnvSummary] = []
     for env in envs:
         size_bytes = env_disk_usage_bytes(env)
@@ -1235,12 +1389,18 @@ async def api_create_from_files(files: List[UploadFile] = File(...)) -> None:
 @app.post("/api/install_miniforge")
 def api_install_miniforge() -> None:
     """Install Miniforge into the user's home directory and update config."""
+    global _backend
     def progress(msg: str) -> None:
         # For now we ignore progress messages; the frontend just shows a spinner.
         return
 
     try:
         install_miniforge(progress=progress)
+        # Re-detect backend after installation
+        try:
+            _backend = detect_backend()
+        except BackendNotFoundError:
+            _backend = None
     except EnvOperationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -1251,20 +1411,34 @@ class LocateCondaRequest(BaseModel):
 
 @app.post("/api/locate_conda")
 def api_locate_conda(req: LocateCondaRequest) -> None:
+    """Set Conda executable path and re-detect backend."""
+    global _backend
     cfg = load_config()
     cfg.conda_executable = req.path
     try:
         save_config(cfg)
+        # Re-detect backend with new path
+        try:
+            _backend = detect_backend()
+        except BackendNotFoundError:
+            _backend = None
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=400, detail=f"Failed to save config: {exc}") from exc
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main() -> int:
     """Entry point for `condanest-web` script."""
     port = 8765
     url = f"http://127.0.0.1:{port}/"
-    # Start browser after server boots; uvicorn will run forever.
-    webbrowser.open(url)
+    
+    # Open browser after a short delay to ensure server is ready
+    def open_browser():
+        time.sleep(1.5)  # Give server time to start
+        webbrowser.open(url)
+    
+    browser_thread = threading.Thread(target=open_browser, daemon=True)
+    browser_thread.start()
+    
     uvicorn.run("condanest.web_app:app", host="127.0.0.1", port=port, reload=False)
     return 0
 

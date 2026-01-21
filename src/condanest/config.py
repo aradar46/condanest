@@ -14,7 +14,6 @@ class AppConfig:
     """User configuration for Conda Control."""
 
     conda_executable: Optional[str] = None
-    env_root: Optional[str] = None
 
 
 def load_config() -> AppConfig:
@@ -28,7 +27,6 @@ def load_config() -> AppConfig:
 
     return AppConfig(
         conda_executable=data.get("conda_executable"),
-        env_root=data.get("env_root"),
     )
 
 

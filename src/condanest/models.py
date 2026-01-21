@@ -22,8 +22,6 @@ class Environment:
     name: str
     path: Path
     is_active: bool = False
-    python_version: Optional[str] = None
-    size_display: Optional[str] = None  # e.g. '3.2G'
 
 
 @dataclass(slots=True)
@@ -41,7 +39,5 @@ class Package:
 
     name: str
     version: str
-    build_string: Optional[str]
     channel: Optional[str]
-    source: Literal["conda", "pip"] = "conda"
 
