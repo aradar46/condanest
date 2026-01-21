@@ -2,7 +2,8 @@
   <img src="condanest.png" alt="CondaNest logo" width="200">
 </p>
 
-## CondaNest
+## CondaNest: GUI Manager for Conda
+
 
  A fast, minimal GTK4 desktop app for **managing, and cleaning Conda/Mamba environments** on Linux.  
 CondaNest gives you a single, focused window to see which envs exist, what they contain, and how much disk space they use – without touching your shell config.
