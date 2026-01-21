@@ -4,8 +4,10 @@
 
 ## CondaNest: GUI Manager for Conda
 
+A fast, minimal desktop app for **managing and cleaning Conda/Mamba environments** on Linux, Windows, and macOS.
 
- A fast, minimal GTK4 desktop app for **managing, and cleaning Conda/Mamba environments** on Linux.   
+**Default frontend:** Qt (PySide6) - works on all platforms  
+**Alternative frontends:** GTK4 (Linux only) or Web (all platforms)   
 
 <p align="center">
   <img src="app.gif" alt="CondaNest in action">
@@ -26,10 +28,16 @@
 ```bash
 git clone https://github.com/aradar46/condanest.git
 cd condanest
-python3 -m venv --system-site-packages .venv
-source .venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -e .
-condanest
+condanest  # Runs Qt frontend (default, cross-platform)
+```
+
+**Alternative frontends:**
+```bash
+condanest-gtk  # GTK4 frontend (Linux only)
+condanest-web  # Web frontend (opens in browser)
 ```
 
 ### AppImage
@@ -52,9 +60,17 @@ After running these commands, retry the operation in CondaNest.
 
 ### Requirements
 
-* Linux with GTK4 and Libadwaita
+**Default Qt frontend (cross-platform):**
 * Python 3.10+
+* PySide6 (installed automatically via pip)
+
+**GTK4 frontend (Linux only):**
+* Linux with GTK4 and Libadwaita
 * `python3-gi`, `gir1.2-gtk-4.0`, `gir1.2-adw-1`
+
+**Web frontend:**
+* Python 3.10+
+* FastAPI and Uvicorn (installed automatically via pip)
 
 ### License
 

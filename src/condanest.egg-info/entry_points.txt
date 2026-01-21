@@ -1,2 +1,4 @@
 [console_scripts]
-condanest = condanest.app:main
+condanest = condanest.qt_app:main
+condanest-gtk = condanest.app:main
+condanest-web = condanest.web_app:main

@@ -6,7 +6,9 @@ src/condanest/backend.py
 src/condanest/config.py
 src/condanest/logging_utils.py
 src/condanest/models.py
+src/condanest/qt_app.py
 src/condanest/terminal_utils.py
+src/condanest/web_app.py
 src/condanest.egg-info/PKG-INFO
 src/condanest.egg-info/SOURCES.txt
 src/condanest.egg-info/dependency_links.txt

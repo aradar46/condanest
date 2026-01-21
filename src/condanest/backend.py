@@ -371,6 +371,20 @@ def update_packages(backend: BackendInfo, env: Environment, specs: List[str]) ->
     _run_plain(backend, args)
 
 
+def remove_packages(backend: BackendInfo, env: Environment, specs: List[str]) -> None:
+    """Remove one or more packages from an environment."""
+    if not specs:
+        return
+    args: List[str] = [
+        "remove",
+        "--yes",
+        "--name",
+        env.name,
+        *specs,
+    ]
+    _run_plain(backend, args)
+
+
 def update_all_packages(backend: BackendInfo, env: Environment) -> None:
     """Update all packages in an environment."""
     args: List[str] = [
@@ -436,8 +450,21 @@ def create_environment(backend: BackendInfo, name: str, python_version: Optional
     return Environment(name=name, path=env_path, is_active=False)
 
 
-def export_environment_yaml(backend: BackendInfo, env: Environment, dest: Path) -> None:
-    """Export env configuration to a YAML file."""
+def export_environment_yaml(
+    backend: BackendInfo,
+    env: Environment,
+    dest: Path,
+    no_builds: bool = False,
+) -> None:
+    """Export env configuration to a YAML file.
+
+    Args:
+        backend: Backend info.
+        env: Environment to export.
+        dest: Destination file path.
+        no_builds: If True, use ``--no-builds`` to omit build strings, like
+            ``conda env export --no-builds``.
+    """
     cmd = [
         str(backend.executable),
         "env",
@@ -445,10 +472,13 @@ def export_environment_yaml(backend: BackendInfo, env: Environment, dest: Path) 
         "--prefix",
         str(env.path),
     ]
+    if no_builds:
+        cmd.append("--no-builds")
+
     logger.info("Exporting environment YAML: %s -> %s", " ".join(cmd), dest)
     try:
         with dest.open("w", encoding="utf-8") as f:
-            proc = subprocess.run(
+            subprocess.run(
                 cmd,
                 check=True,
                 stdout=f,

@@ -5,26 +5,31 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "condanest"
 version = "0.1.0"
-description = "CondaNest - Linux-native Conda/Mamba manager with GTK4 + Libadwaita UI."
+description = "CondaNest - Cross-platform Conda/Mamba manager with Qt, GTK4, and Web frontends."
 authors = [
   { name = "Adr", email = "you@example.com" },
 ]
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-keywords = ["conda", "mamba", "gtk4", "libadwaita"]
+keywords = ["conda", "mamba", "qt", "pyside6", "gtk4", "libadwaita", "cross-platform"]
 classifiers = [
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
   "License :: OSI Approved :: MIT License",
-  "Operating System :: POSIX :: Linux",
-  "Environment :: X11 Applications :: GTK",
+  "Operating System :: OS Independent",
 ]
 dependencies = [
   # Core runtime
   "packaging>=23.0",
-  # NOTE: PyGObject is usually provided by the distro (python3-gi, gir1.2-gtk-4.0, gir1.2-adw-1).
-  # We declare it as an optional dependency here; installation docs should explain system packages.
+  # Web frontend
+  "fastapi>=0.115.0",
+  "uvicorn>=0.30.0",
+  "python-multipart>=0.0.9",
+  # Qt frontend
+  "PySide6>=6.7.0",
+  # NOTE: The GTK frontend still relies on system-provided PyGObject and GI
+  # bindings (python3-gi, gir1.2-gtk-4.0, gir1.2-adw-1) on Linux.
 ]
 
 [project.optional-dependencies]
@@ -33,7 +38,9 @@ dev = [
 ]
 
 [project.scripts]
-condanest = "condanest.app:main"
+condanest = "condanest.qt_app:main"
+condanest-gtk = "condanest.app:main"
+condanest-web = "condanest.web_app:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
