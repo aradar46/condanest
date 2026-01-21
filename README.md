@@ -15,15 +15,12 @@
   </a>
 </p>
 
-## CondaNest: Web-based Conda Manager
+## CondaNest: Web-based GUI Conda Manager
 
-A fast, minimal web app for **managing and cleaning Conda/Mamba environments** on Linux, Windows, and macOS.
+A fast, minimal web-based GUI for **managing and cleaning Conda/Mamba environments** on Linux, Windows, and macOS.
 
 Runs a local web server that opens in your browser - no native GUI dependencies required.
-
-<p align="center">
-  <img src="app.gif" alt="CondaNest in action">
-</p>
+ 
 
 
 ### Features
