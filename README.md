@@ -21,7 +21,9 @@ A fast, minimal web-based GUI for **managing and cleaning Conda/Mamba environmen
 
 Runs a local web server that opens in your browser - no native GUI dependencies required.
  
-
+<p align="center">
+  <img src="condanestSS.png" alt="CondaNest ss">
+</p>
 
 ### Features
 
